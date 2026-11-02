@@ -74,4 +74,17 @@ class AiServiceProxyTest {
             assertThat(ai.ask("안녕")).isEqualTo("echo: 안녕");
         });
     }
+
+    @Test
+    void registersLocalProvidersFromProperties() {
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(AiAutoConfiguration.class))
+                .withPropertyValues("ai.default-provider=ollama", "ai.ollama.enabled=true",
+                        "ai.llamacpp.enabled=true", "ai.llamacpp.base-url=http://127.0.0.1:1/v1")
+                .run(ctx -> {
+                    io.aiplugin.core.AiClient client = ctx.getBean(io.aiplugin.core.AiClient.class);
+                    assertThat(client.providerNames()).containsExactlyInAnyOrder("ollama", "llamacpp");
+                    assertThat(client.defaultProvider()).isEqualTo("ollama");
+                });
+    }
 }

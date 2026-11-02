@@ -13,3 +13,15 @@ ai:
   knowledge:
     location: classpath*:ai-knowledge/**/*.*
     max-examples: 5
+
+  # 로컬 모델 (API 키 불필요) ─ 사용하려면 enabled: true
+  ollama:
+    enabled: false
+    base-url: http://localhost:11434
+    model: llama3.2            # 없으면 첫 호출 때 자동 다운로드
+  llamacpp:
+    enabled: false
+    model: hf:Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf
+    model-dir: ${user.home}/.aiplugin/models
+    server-binary: llama-server
+    port: 8089

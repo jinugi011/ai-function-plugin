@@ -32,14 +32,25 @@ public class OpenAiCompatibleProvider implements AiProvider {
     private final String apiKey;
     private final String defaultModel;
     private final int defaultMaxTokens;
+    private final String maxTokensParam;
     private final HttpClient http;
     private final Duration timeout;
 
     public OpenAiCompatibleProvider(String name, String baseUrl, String apiKey, String defaultModel,
                                     int defaultMaxTokens, Duration timeout) {
+        this(name, baseUrl, apiKey, defaultModel, defaultMaxTokens, timeout, "max_completion_tokens");
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalArgumentException(name + ": API key is required");
         }
+    }
+
+    /**
+     * 로컬 서버(llama.cpp 등)용 생성자. apiKey 는 null 가능하며, 최대 토큰 파라미터 이름을 지정합니다
+     * (llama.cpp 는 "max_tokens").
+     */
+    public OpenAiCompatibleProvider(String name, String baseUrl, String apiKey, String defaultModel,
+                                    int defaultMaxTokens, Duration timeout, String maxTokensParam) {
+        this.maxTokensParam = maxTokensParam;
         this.name = name;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.apiKey = apiKey;
@@ -67,7 +78,7 @@ public class OpenAiCompatibleProvider implements AiProvider {
         String model = request.model() != null ? request.model() : defaultModel;
         ObjectNode body = MAPPER.createObjectNode();
         body.put("model", model);
-        body.put("max_completion_tokens", request.maxTokens() != null ? request.maxTokens() : defaultMaxTokens);
+        body.put(maxTokensParam, request.maxTokens() != null ? request.maxTokens() : defaultMaxTokens);
 
         ArrayNode messages = body.putArray("messages");
         String system = FormatInstructions.mergeSystem(request.systemPrompt(), request.format());
@@ -93,12 +104,14 @@ public class OpenAiCompatibleProvider implements AiProvider {
 
     private JsonNode post(String path, JsonNode body) {
         try {
-            HttpRequest req = HttpRequest.newBuilder(URI.create(baseUrl + path))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(baseUrl + path))
                     .timeout(timeout)
-                    .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)));
+            if (apiKey != null && !apiKey.isBlank()) {
+                builder.header("Authorization", "Bearer " + apiKey);
+            }
+            HttpRequest req = builder.build();
             HttpResponse<String> res = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (res.statusCode() / 100 != 2) {
                 throw new AiException(name + " API error " + res.statusCode() + ": " + res.body());

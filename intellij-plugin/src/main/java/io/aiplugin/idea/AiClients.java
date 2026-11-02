@@ -3,12 +3,15 @@ package io.aiplugin.idea;
 import com.intellij.openapi.project.Project;
 import io.aiplugin.core.AiClient;
 import io.aiplugin.core.knowledge.KnowledgeBase;
+import io.aiplugin.core.local.OllamaClient;
+import io.aiplugin.core.local.OllamaProvider;
 import io.aiplugin.core.provider.AiProvider;
 import io.aiplugin.core.provider.ClaudeProvider;
 import io.aiplugin.core.provider.OpenAiCompatibleProvider;
 import io.aiplugin.idea.settings.AiSettings;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,9 +37,10 @@ public final class AiClients {
         if (abacusKey != null) {
             providers.add(OpenAiCompatibleProvider.abacus(abacusKey, s.abacusModel));
         }
-        if (providers.isEmpty()) {
-            throw new IllegalStateException("No API key configured. Open Settings | Tools | AI Function Plugin.");
-        }
+        // 로컬 모델은 API 키가 필요 없으므로 항상 등록 (실제 연결은 호출 시점에)
+        providers.add(new OllamaProvider(new OllamaClient(s.ollamaBaseUrl), s.ollamaModel, 2048, true,
+                Duration.ofMinutes(10), null));
+        providers.add(LocalModelService.getInstance().llamaCpp());
         KnowledgeBase kb = withKnowledge ? loadKnowledge(project) : KnowledgeBase.empty();
         return new AiClient(providers, s.defaultProvider, kb, null);
     }

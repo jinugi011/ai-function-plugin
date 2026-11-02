@@ -1,10 +1,10 @@
 # AI Function Plugin
 
-Spring Boot 애플리케이션과 IntelliJ에서 OpenAI, Claude, Abacus.AI 모델을 **메서드(함수) 단위로** 호출하는 플러그인입니다.
+Spring Boot 애플리케이션과 IntelliJ에서 OpenAI, Claude, Abacus.AI 모델과 **로컬 모델(Ollama, llama.cpp)**을 **메서드(함수) 단위로** 호출하는 플러그인입니다.
 
 | 모듈 | 설명 |
 |---|---|
-| `ai-core` | 프로바이더 연동(OpenAI, Claude, Abacus), 프롬프트 템플릿, TEXT / JSON / key-value 응답 파싱, 지식베이스(사전 학습 데이터), OpenAI 파인튜닝 |
+| `ai-core` | 프로바이더 연동(OpenAI, Claude, Abacus, Ollama, llama.cpp), 로컬 모델 다운로드·실행, 프롬프트 템플릿, TEXT / JSON / key-value 응답 파싱, 지식베이스(사전 학습 데이터), OpenAI 파인튜닝 |
 | `ai-spring-boot-starter` | `@AiService` 인터페이스와 `@AiPrompt` 메서드를 선언하면 구현체를 자동 생성. `application.yml`에서 설정 |
 | `intellij-plugin` | IntelliJ 툴윈도우에서 프롬프트 실행, API 키 관리, 학습 데이터 편집, `@AiService` 코드 생성 |
 | `sample-app` | Spring Boot 사용 예제 |
@@ -33,8 +33,8 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    implementation("com.github.jinugi011.ai-function-plugin:ai-spring-boot-starter:v0.1.0")
-    // Spring 없이 코어만: com.github.jinugi011.ai-function-plugin:ai-core:v0.1.0
+    implementation("com.github.jinugi011.ai-function-plugin:ai-spring-boot-starter:v0.2.0")
+    // Spring 없이 코어만: com.github.jinugi011.ai-function-plugin:ai-core:v0.2.0
 }
 ```
 
@@ -46,11 +46,11 @@ dependencies {
 <dependency>
   <groupId>com.github.jinugi011.ai-function-plugin</groupId>
   <artifactId>ai-spring-boot-starter</artifactId>
-  <version>v0.1.0</version>
+  <version>v0.2.0</version>
 </dependency>
 ```
 
-새 버전을 배포하려면 GitHub에 태그를 push하면 됩니다(`git tag v0.2.0 && git push origin v0.2.0`). 로컬에서만 쓸 때는 `./gradlew publishToMavenLocal` 후 `io.aiplugin:ai-spring-boot-starter:0.1.0`을 `mavenLocal()`에서 받을 수 있습니다.
+새 버전을 배포하려면 GitHub에 태그를 push하면 됩니다(`git tag v0.3.0 && git push origin v0.3.0`). 로컬에서만 쓸 때는 `./gradlew publishToMavenLocal` 후 `io.aiplugin:ai-spring-boot-starter:0.1.0`을 `mavenLocal()`에서 받을 수 있습니다.
 
 컴파일 옵션에 `-parameters`를 켜면 `{text}` 같은 템플릿 변수를 파라미터 이름과 바로 연결합니다. 이 옵션 없이 쓰려면 파라미터에 `@PromptVar("text")`를 붙이세요.
 
@@ -125,7 +125,61 @@ Map<String, String> kv = aiClient.prompt("{text} 에서 이름/나이/도시 추
         .keyValue();                 // .text() / .json() / .as(Person.class)
 ```
 
-## 2. 사전 학습 데이터 (`ai-knowledge`)
+## 2. 로컬 모델 (Ollama / llama.cpp)
+
+API 키 없이 내 PC에서 모델을 내려받아 실행합니다. 두 방식 모두 다른 프로바이더와 똑같이 `provider = "ollama"` 또는 `provider = "llamacpp"`로 사용하고, JSON / key-value 응답도 그대로 지원합니다.
+
+| | Ollama | llama.cpp |
+|---|---|---|
+| 준비 | [ollama.com](https://ollama.com/download) 설치 후 실행 | `brew install llama.cpp` (또는 [릴리스](https://github.com/ggml-org/llama.cpp/releases)에서 `llama-server`) |
+| 모델 지정 | 이름: `llama3.2`, `qwen2.5:7b`, `exaone3.5` 등 | GGUF 파일: `hf:<owner>/<repo>/<file>.gguf`, URL, 또는 로컬 경로 |
+| 다운로드 | Ollama가 관리 (`/api/pull`) | `~/.aiplugin/models`에 저장. 중단되면 이어받기 |
+| 실행 | Ollama 서버 사용 | 플러그인이 `llama-server` 프로세스를 띄우고, 앱 종료 시 함께 종료 |
+
+```yaml
+ai:
+  default-provider: ollama
+  ollama:
+    enabled: true
+    model: llama3.2
+    auto-pull: true            # 모델이 없으면 첫 호출 때 다운로드
+    pull-on-startup: false     # true: 앱 시작 시 미리 다운로드
+  llamacpp:
+    enabled: true
+    model: hf:Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf   # 약 2GB
+    port: 8089
+    context-size: 4096
+    gpu-layers: 99             # GPU(Metal/CUDA)에 올릴 레이어 수, 생략 시 기본값
+    start-on-startup: false    # true: 앱 시작 시 다운로드 + 서버 실행
+    # base-url: http://localhost:8080/v1   # 이미 떠 있는 llama-server 를 쓸 때
+    # hugging-face-token: ${HF_TOKEN:}      # 접근 제한(gated) 모델
+```
+
+```java
+@AiService(provider = "llamacpp")
+public interface LocalAi {
+    @AiPrompt("다음 문장에서 이름과 나이를 추출: {text}")
+    Map<String, String> extract(String text);
+}
+```
+
+Spring 없이 직접 쓸 수도 있습니다.
+
+```java
+try (LlamaCppProvider llama = LlamaCppProvider.builder()
+        .model("hf:Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf")
+        .progressListener(p -> System.out.println(p))
+        .build()) {
+    AiClient client = new AiClient(List.of(llama), "llamacpp", null, null);
+    System.out.println(client.prompt("안녕하세요").text());
+}
+
+new OllamaClient("http://localhost:11434").pull("llama3.2", System.out::println);
+```
+
+작은 로컬 모델(3B~8B)은 클라우드 모델보다 JSON 형식을 덜 정확하게 지킵니다. JSON 출력이 중요하면 7B 이상 모델을 쓰거나 `ai-knowledge` 예제를 함께 넣으세요.
+
+## 3. 사전 학습 데이터 (`ai-knowledge`)
 
 API로 제공되는 상용 모델은 가중치를 직접 사전학습(pre-training)할 수 없습니다. 이 플러그인은 대신 두 가지 방법으로 도메인 데이터를 모델에 반영합니다.
 
@@ -146,12 +200,13 @@ JsonNode job = fineTune.startFineTune(knowledgeBase.examples(), null, "gpt-4.1-m
 fineTune.getJob(job.path("id").asText());
 ```
 
-## 3. IntelliJ 플러그인
+## 4. IntelliJ 플러그인
 
 설치: **Settings → Plugins → ⚙ → Install Plugin from Disk…** 에서 `intellij-plugin/build/distributions/intellij-plugin-0.1.0.zip`을 선택합니다.
 
 - **Settings → Tools → AI Function Plugin**: API 키(IDE 비밀번호 저장소에 저장), 모델, 기본 프로바이더, 지식 디렉터리
 - **AI Function 툴윈도우 → Prompt 탭**: 프로바이더와 형식(TEXT / JSON / KEY_VALUE)을 고르고 프롬프트를 실행합니다. 실행 결과는 "Save as Training Example" 버튼으로 학습 예제에 추가할 수 있습니다.
+- **Local Models 탭**: Ollama 모델 다운로드(pull)·목록·삭제, GGUF 모델 다운로드, `llama-server` 시작·중지. 진행 상황은 IDE 진행 표시줄과 로그에 나옵니다. Prompt 탭에서 provider로 `ollama`나 `llamacpp`를 고르면 로컬 모델로 실행합니다.
 - **Training Data 탭**: `ai-knowledge/examples.jsonl` 편집, OpenAI JSONL 내보내기, 파인튜닝 시작과 상태 확인
 - **에디터 우클릭 → Send Selection to AI Prompt**: 선택한 코드나 텍스트를 프롬프트로 보냅니다.
 - **프로젝트 뷰 → New → AI Service Interface**: `@AiService` 인터페이스 템플릿을 생성합니다.

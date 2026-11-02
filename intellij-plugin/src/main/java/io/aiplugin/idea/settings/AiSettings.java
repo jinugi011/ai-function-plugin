@@ -19,7 +19,11 @@ import java.util.List;
 @State(name = "AiFunctionPluginSettings", storages = @Storage("aiFunctionPlugin.xml"))
 public final class AiSettings implements PersistentStateComponent<AiSettings.State> {
 
-    public static final List<String> PROVIDERS = List.of("claude", "openai", "abacus");
+    /** API 키가 필요한 클라우드 프로바이더. */
+    public static final List<String> CLOUD_PROVIDERS = List.of("claude", "openai", "abacus");
+    /** 로컬 모델을 포함한 전체 프로바이더. */
+    public static final List<String> PROVIDERS = List.of("claude", "openai", "abacus", "ollama", "llamacpp");
+    public static final String DEFAULT_GGUF_MODEL = "hf:Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf";
 
     public static class State {
         public String defaultProvider = "claude";
@@ -29,6 +33,13 @@ public final class AiSettings implements PersistentStateComponent<AiSettings.Sta
         public String abacusModel = "route-llm";
         public String knowledgeDir = "src/main/resources/ai-knowledge";
         public String fineTuneBaseModel = "gpt-4.1-mini-2025-04-14";
+        public String ollamaBaseUrl = "http://localhost:11434";
+        public String ollamaModel = "llama3.2";
+        public String llamaModel = DEFAULT_GGUF_MODEL;
+        public String llamaModelDir = System.getProperty("user.home") + "/.aiplugin/models";
+        public String llamaServerBinary = "llama-server";
+        public int llamaPort = 8089;
+        public int llamaContextSize = 4096;
     }
 
     private State state = new State();
@@ -52,6 +63,7 @@ public final class AiSettings implements PersistentStateComponent<AiSettings.Sta
             case "claude" -> state.claudeModel;
             case "openai" -> state.openaiModel;
             case "abacus" -> state.abacusModel;
+            case "ollama" -> state.ollamaModel;
             default -> null;
         };
     }

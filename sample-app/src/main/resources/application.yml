@@ -1,0 +1,15 @@
+ai:
+  default-provider: claude
+  claude:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: claude-opus-5-5
+    effort: medium
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: gpt-5
+  abacus:
+    api-key: ${ABACUS_API_KEY:}
+    model: route-llm
+  knowledge:
+    location: classpath*:ai-knowledge/**/*.*
+    max-examples: 5

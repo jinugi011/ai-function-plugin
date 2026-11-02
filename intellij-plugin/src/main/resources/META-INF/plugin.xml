@@ -1,0 +1,46 @@
+<idea-plugin>
+    <id>io.aiplugin.ai-function-plugin</id>
+    <name>AI Function Plugin</name>
+    <vendor>AI Plugin</vendor>
+
+    <description><![CDATA[
+    Call OpenAI, Claude and Abacus.AI models from IntelliJ and Spring Boot.
+    <ul>
+      <li>Run text prompts and receive TEXT, JSON or key-value results in a tool window</li>
+      <li>Store API keys securely in the IDE password safe</li>
+      <li>Manage training examples (ai-knowledge) used as few-shot context or exported for OpenAI fine-tuning</li>
+      <li>Generate <code>@AiService</code> interfaces for the ai-spring-boot-starter</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="tools"
+                                 id="io.aiplugin.settings"
+                                 displayName="AI Function Plugin"
+                                 instance="io.aiplugin.idea.settings.AiSettingsConfigurable"/>
+        <toolWindow id="AI Function"
+                    anchor="right"
+                    icon="AllIcons.Toolwindows.ToolWindowMessages"
+                    factoryClass="io.aiplugin.idea.toolwindow.AiToolWindowFactory"/>
+        <notificationGroup id="AI Function Plugin" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action id="io.aiplugin.NewAiService"
+                class="io.aiplugin.idea.actions.NewAiServiceAction"
+                text="AI Service Interface"
+                description="Create a Spring @AiService interface"
+                icon="AllIcons.Nodes.Interface">
+            <add-to-group group-id="NewGroup" anchor="last"/>
+        </action>
+        <action id="io.aiplugin.SendSelectionToPrompt"
+                class="io.aiplugin.idea.actions.SendSelectionToPromptAction"
+                text="Send Selection to AI Prompt"
+                description="Open the AI Function tool window with the selected text">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

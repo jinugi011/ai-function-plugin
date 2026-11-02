@@ -1,0 +1,4 @@
+jdk:
+  - openjdk21
+install:
+  - ./gradlew :ai-core:publishToMavenLocal :ai-spring-boot-starter:publishToMavenLocal -x test

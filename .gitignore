@@ -1,0 +1,9 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.intellijPlatform/
+local.properties
+.github/modernize/
+.DS_Store

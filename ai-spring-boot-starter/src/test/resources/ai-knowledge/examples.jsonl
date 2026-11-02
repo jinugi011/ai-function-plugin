@@ -1,0 +1,1 @@
+{"input":"Extract product from: 마우스 2만원","output":{"name":"마우스","price":20000,"tags":["it"]}}

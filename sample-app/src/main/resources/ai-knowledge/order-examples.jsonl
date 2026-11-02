@@ -1,0 +1,2 @@
+{"input":"다음 주문 메시지를 구조화해줘:\n김철수입니다. 서울 마포구 월드컵로 10으로 사과 2박스(박스당 3만원) 보내주세요","output":{"customer":"김철수","address":"서울 마포구 월드컵로 10","items":[{"product":"사과","quantity":2,"unitPrice":30000}]},"tags":["order"]}
+{"input":"다음 고객 문의의 카테고리, 긴급도(high/medium/low), 요약을 알려줘:\n어제 주문한 상품이 파손되어 왔어요. 빨리 교환해주세요","output":{"category":"교환/반품","urgency":"high","summary":"파손 상품 교환 요청"},"tags":["order"]}

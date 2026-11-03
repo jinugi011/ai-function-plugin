@@ -1,1 +1,2 @@
 io.aiplugin.spring.autoconfigure.AiAutoConfiguration
+io.aiplugin.spring.autoconfigure.RagAutoConfiguration

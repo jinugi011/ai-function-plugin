@@ -40,6 +40,15 @@ public final class AiSettings implements PersistentStateComponent<AiSettings.Sta
         public String llamaServerBinary = "llama-server";
         public int llamaPort = 8089;
         public int llamaContextSize = 4096;
+        public String ragEmbeddingProvider = "openai";
+        public String ragEmbeddingModel = "";
+        public String ragEmbeddingBaseUrl = "";
+        public String ragStoreType = "file";
+        public String ragFilePath = "src/main/resources/ai-rag/vector-store.json.gz";
+        public String ragQdrantUrl = "http://localhost:6333";
+        public String ragQdrantCollection = "ai_documents";
+        public int ragChunkSize = 800;
+        public int ragTopK = 4;
     }
 
     private State state = new State();

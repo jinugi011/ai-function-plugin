@@ -25,8 +25,18 @@ public class AiClient {
     private final String defaultProvider;
     private final KnowledgeBase knowledgeBase;
     private final ResponseParser parser;
+    private final ContextRetriever retriever;
 
     public AiClient(Iterable<AiProvider> providers, String defaultProvider, KnowledgeBase knowledgeBase, ResponseParser parser) {
+        this(providers, defaultProvider, knowledgeBase, parser, null);
+    }
+
+    /**
+     * @param retriever RAG 검색기 (예: {@link io.aiplugin.core.rag.RagService}). null 이면 RAG 미사용.
+     */
+    public AiClient(Iterable<AiProvider> providers, String defaultProvider, KnowledgeBase knowledgeBase,
+                    ResponseParser parser, ContextRetriever retriever) {
+        this.retriever = retriever;
         for (AiProvider p : providers) {
             this.providers.put(p.name(), p);
         }
@@ -53,6 +63,11 @@ public class AiClient {
 
     public ResponseParser parser() {
         return parser;
+    }
+
+    /** RAG 검색기, 없으면 null. */
+    public ContextRetriever retriever() {
+        return retriever;
     }
 
     public PromptCall prompt(String template) {

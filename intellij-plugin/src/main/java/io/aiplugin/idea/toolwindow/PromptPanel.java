@@ -46,6 +46,7 @@ public class PromptPanel extends JPanel {
     private final JBTextArea prompt = new JBTextArea(8, 40);
     private final JBTextArea result = new JBTextArea();
     private final JBCheckBox useKnowledge = new JBCheckBox("Use project knowledge (ai-knowledge)", true);
+    private final JBCheckBox useRag = new JBCheckBox("Use RAG (vector DB)", false);
     private final JBLabel status = new JBLabel(" ");
     private final JButton run = new JButton("Run");
 
@@ -70,6 +71,7 @@ public class PromptPanel extends JPanel {
         options.add(new JBLabel("Format:"));
         options.add(format);
         options.add(useKnowledge);
+        options.add(useRag);
 
         JPanel input = FormBuilder.createFormBuilder()
                 .addComponent(options)
@@ -125,6 +127,7 @@ public class PromptPanel extends JPanel {
         String modelName = model.getText().isBlank() ? null : model.getText().trim();
         String systemText = system.getText().isBlank() ? null : system.getText();
         boolean knowledge = useKnowledge.isSelected();
+        boolean rag = useRag.isSelected();
 
         run.setEnabled(false);
         status.setText("Running...");
@@ -134,7 +137,7 @@ public class PromptPanel extends JPanel {
 
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                AiClient client = AiClients.create(project, knowledge);
+                AiClient client = AiClients.create(project, knowledge, rag);
                 AiResult r = client.prompt(promptText).provider(providerName).model(modelName)
                         .system(systemText).useKnowledge(knowledge).call(fmt);
                 output = render(r, fmt);

@@ -1,12 +1,12 @@
 # AI Function Plugin
 
-Spring Boot 애플리케이션과 IntelliJ에서 OpenAI, Claude, Abacus.AI 모델과 **로컬 모델(Ollama, llama.cpp)**을 **메서드(함수) 단위로** 호출하는 플러그인입니다.
+Spring Boot 애플리케이션과 IntelliJ에서 OpenAI, Claude, Abacus.AI 모델과 **로컬 모델(Ollama, llama.cpp)**을 **메서드(함수) 단위로** 호출하는 플러그인입니다. PDF와 텍스트 문서로 **벡터 DB를 구축해 RAG**로 답변하는 기능도 포함합니다.
 
 | 모듈 | 설명 |
 |---|---|
-| `ai-core` | 프로바이더 연동(OpenAI, Claude, Abacus, Ollama, llama.cpp), 로컬 모델 다운로드·실행, 프롬프트 템플릿, TEXT / JSON / key-value 응답 파싱, 지식베이스(사전 학습 데이터), OpenAI 파인튜닝 |
+| `ai-core` | 프로바이더 연동(OpenAI, Claude, Abacus, Ollama, llama.cpp), 로컬 모델 다운로드·실행, RAG(문서 로딩·임베딩·벡터 DB), 프롬프트 템플릿, TEXT / JSON / key-value 응답 파싱, 지식베이스(사전 학습 데이터), OpenAI 파인튜닝 |
 | `ai-spring-boot-starter` | `@AiService` 인터페이스와 `@AiPrompt` 메서드를 선언하면 구현체를 자동 생성. `application.yml`에서 설정 |
-| `intellij-plugin` | IntelliJ 툴윈도우에서 프롬프트 실행, API 키 관리, 학습 데이터 편집, `@AiService` 코드 생성 |
+| `intellij-plugin` | IntelliJ 툴윈도우에서 프롬프트 실행, API 키 관리, 학습 데이터 편집, 벡터 DB 구축, `@AiService` 코드 생성 |
 | `sample-app` | Spring Boot 사용 예제 |
 
 ## 빌드
@@ -33,8 +33,8 @@ repositories {
     maven("https://jitpack.io")
 }
 dependencies {
-    implementation("com.github.jinugi011.ai-function-plugin:ai-spring-boot-starter:v0.2.0")
-    // Spring 없이 코어만: com.github.jinugi011.ai-function-plugin:ai-core:v0.2.0
+    implementation("com.github.jinugi011.ai-function-plugin:ai-spring-boot-starter:v0.3.0")
+    // Spring 없이 코어만: com.github.jinugi011.ai-function-plugin:ai-core:v0.3.0
 }
 ```
 
@@ -46,11 +46,11 @@ dependencies {
 <dependency>
   <groupId>com.github.jinugi011.ai-function-plugin</groupId>
   <artifactId>ai-spring-boot-starter</artifactId>
-  <version>v0.2.0</version>
+  <version>v0.3.0</version>
 </dependency>
 ```
 
-새 버전을 배포하려면 GitHub에 태그를 push하면 됩니다(`git tag v0.3.0 && git push origin v0.3.0`). 로컬에서만 쓸 때는 `./gradlew publishToMavenLocal` 후 `io.aiplugin:ai-spring-boot-starter:0.1.0`을 `mavenLocal()`에서 받을 수 있습니다.
+새 버전을 배포하려면 GitHub에 태그를 push하면 됩니다(`git tag v0.4.0 && git push origin v0.4.0`). 로컬에서만 쓸 때는 `./gradlew publishToMavenLocal` 후 `io.aiplugin:ai-spring-boot-starter:0.1.0`을 `mavenLocal()`에서 받을 수 있습니다.
 
 컴파일 옵션에 `-parameters`를 켜면 `{text}` 같은 템플릿 변수를 파라미터 이름과 바로 연결합니다. 이 옵션 없이 쓰려면 파라미터에 `@PromptVar("text")`를 붙이세요.
 
@@ -179,7 +179,83 @@ new OllamaClient("http://localhost:11434").pull("llama3.2", System.out::println)
 
 작은 로컬 모델(3B~8B)은 클라우드 모델보다 JSON 형식을 덜 정확하게 지킵니다. JSON 출력이 중요하면 7B 이상 모델을 쓰거나 `ai-knowledge` 예제를 함께 넣으세요.
 
-## 3. 사전 학습 데이터 (`ai-knowledge`)
+## 3. RAG: 문서 임베딩과 벡터 DB
+
+PDF, TXT, MD 문서를 조각(chunk)으로 나눠 임베딩한 뒤 벡터 DB에 저장합니다. AI를 호출하면 질문과 비슷한 조각을 찾아 프롬프트에 근거 자료로 넣습니다.
+
+```
+문서(PDF/TXT/MD) → 텍스트 추출(PDF는 페이지별) → 청크 분할(문단·문장 경계, 겹침) → 임베딩 → 벡터 DB
+질문 → 임베딩 → 유사 조각 검색(top-k) → 시스템 프롬프트에 <document> 로 주입 → 모델 호출
+```
+
+| 구성 요소 | 선택지 |
+|---|---|
+| 임베딩 | `openai` (text-embedding-3-small), `ollama` (bge-m3, 로컬·무료·한국어 지원), `openai-compatible` (Voyage AI, llama.cpp 등) |
+| 벡터 DB | `file` (설치 불필요, JSON 파일), `qdrant`, `pgvector` (PostgreSQL) |
+
+```yaml
+ai:
+  rag:
+    enabled: true
+    documents:                     # 시작 시 색인. 내용이 바뀐 문서만 다시 임베딩
+      - classpath*:rag-docs/**
+      - file:./docs/**
+    chunk-size: 800
+    chunk-overlap: 100
+    top-k: 4
+    min-score: 0.3
+    embedding:
+      provider: ollama             # openai | ollama | openai-compatible
+      model: bge-m3
+    store:
+      type: qdrant                 # file | qdrant | pgvector
+      qdrant-url: http://localhost:6333
+      qdrant-collection: ai_documents
+```
+
+벡터 DB 실행 예:
+```bash
+docker run -d -p 6333:6333 qdrant/qdrant
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvector/pgvector:pg17
+```
+
+`pgvector`를 쓰려면 애플리케이션에 `spring-boot-starter-jdbc`, `org.postgresql:postgresql` 의존성과 `spring.datasource.*` 설정이 있어야 합니다. 테이블과 HNSW 인덱스는 처음 저장할 때 자동으로 만들어집니다.
+
+RAG가 켜져 있으면 모든 `@AiPrompt` 호출에 검색 결과가 자동으로 들어갑니다. 특정 메서드에서 끄려면 `@AiPrompt(useRag = false)`를 지정하세요.
+
+```java
+@AiService(system = "제공된 문서에 근거해서만 답하세요.")
+public interface PolicyAi {
+    @AiPrompt("고객 질문: {question}\nanswer, source 키로 답해줘")
+    Map<String, String> answer(String question);
+}
+
+// 코드에서 직접 색인·검색
+ragService.ingest(Path.of("docs"));                                   // 폴더 전체
+ragService.ingest("upload/manual.pdf", multipartFile.getInputStream());
+ragService.ingestText("faq-42", "DB에서 읽은 FAQ 본문", Map.of("category", "faq"));
+List<SearchResult> hits = ragService.search("환불 규정", 4);
+```
+
+### IntelliJ에서 벡터 DB 미리 만들기
+
+IntelliJ의 **AI Function → RAG 탭**에서 파일이나 폴더를 추가하면 `src/main/resources/ai-rag/vector-store.json.gz`에 벡터 DB가 만들어집니다. Spring 앱은 이 파일을 읽기 전용으로 바로 사용할 수 있어서, 앱을 시작할 때 임베딩 비용이 들지 않습니다.
+
+```yaml
+ai:
+  rag:
+    enabled: true
+    ingest-on-startup: false
+    embedding:
+      provider: openai             # IDE에서 만든 것과 같은 임베딩 모델이어야 함
+    store:
+      type: file
+      file-path: classpath:ai-rag/vector-store.json.gz
+```
+
+임베딩 모델이 다르면 벡터를 비교할 수 없으므로, 저장소를 만든 모델과 다른 모델로 열면 오류가 납니다.
+
+## 4. 사전 학습 데이터 (`ai-knowledge`)
 
 API로 제공되는 상용 모델은 가중치를 직접 사전학습(pre-training)할 수 없습니다. 이 플러그인은 대신 두 가지 방법으로 도메인 데이터를 모델에 반영합니다.
 
@@ -200,12 +276,13 @@ JsonNode job = fineTune.startFineTune(knowledgeBase.examples(), null, "gpt-4.1-m
 fineTune.getJob(job.path("id").asText());
 ```
 
-## 4. IntelliJ 플러그인
+## 5. IntelliJ 플러그인
 
 설치: **Settings → Plugins → ⚙ → Install Plugin from Disk…** 에서 `intellij-plugin/build/distributions/intellij-plugin-0.1.0.zip`을 선택합니다.
 
 - **Settings → Tools → AI Function Plugin**: API 키(IDE 비밀번호 저장소에 저장), 모델, 기본 프로바이더, 지식 디렉터리
 - **AI Function 툴윈도우 → Prompt 탭**: 프로바이더와 형식(TEXT / JSON / KEY_VALUE)을 고르고 프롬프트를 실행합니다. 실행 결과는 "Save as Training Example" 버튼으로 학습 예제에 추가할 수 있습니다.
+- **RAG 탭**: 임베딩 모델과 벡터 DB(파일 또는 Qdrant)를 고르고, PDF/TXT/MD 파일이나 폴더를 추가해 벡터 DB를 만듭니다. 문서 목록, 삭제, 검색 테스트를 할 수 있습니다. Prompt 탭에서 **Use RAG**를 체크하면 검색 결과를 넣어 질문합니다.
 - **Local Models 탭**: Ollama 모델 다운로드(pull)·목록·삭제, GGUF 모델 다운로드, `llama-server` 시작·중지. 진행 상황은 IDE 진행 표시줄과 로그에 나옵니다. Prompt 탭에서 provider로 `ollama`나 `llamacpp`를 고르면 로컬 모델로 실행합니다.
 - **Training Data 탭**: `ai-knowledge/examples.jsonl` 편집, OpenAI JSONL 내보내기, 파인튜닝 시작과 상태 확인
 - **에디터 우클릭 → Send Selection to AI Prompt**: 선택한 코드나 텍스트를 프롬프트로 보냅니다.
@@ -221,6 +298,11 @@ curl -X POST localhost:8080/orders/parse -H 'Content-Type: text/plain' \
      -d '이영희입니다. 부산 해운대구 우동 1번지로 배 3박스 보내주세요'
 curl -X POST 'localhost:8080/prompt?format=KEY_VALUE' -H 'Content-Type: text/plain' \
      -d '대한민국의 수도와 인구를 알려줘'
+
+# RAG (--ai.rag.enabled=true 로 실행)
+curl -F file=@manual.pdf localhost:8080/rag/documents
+curl 'localhost:8080/rag/search?q=제주 배송비'
+curl -X POST localhost:8080/rag/policy -H 'Content-Type: text/plain' -d '골드 회원은 배송비가 있나요?'
 ```
 
 ## 참고

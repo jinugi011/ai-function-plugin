@@ -17,6 +17,7 @@ public final class PromptCall {
     private Integer maxTokens;
     private boolean useKnowledge = true;
     private String knowledgeTag;
+    private boolean useRag = true;
 
     PromptCall(AiClient client, String template) {
         this.client = client;
@@ -65,6 +66,12 @@ public final class PromptCall {
         return this;
     }
 
+    /** RAG(벡터 DB 검색) 사용 여부. 기본값 true (AiClient 에 검색기가 있을 때만 동작). */
+    public PromptCall useRag(boolean useRag) {
+        this.useRag = useRag;
+        return this;
+    }
+
     public AiResult call(ResponseFormat format) {
         String prompt = PromptTemplate.render(template, vars);
         String systemPrompt = system;
@@ -72,6 +79,12 @@ public final class PromptCall {
             String context = client.knowledgeBase().buildContext(prompt, knowledgeTag);
             if (!context.isEmpty()) {
                 systemPrompt = systemPrompt == null ? context : systemPrompt + "\n\n" + context;
+            }
+        }
+        if (useRag && client.retriever() != null) {
+            String retrieved = client.retriever().retrieveContext(prompt);
+            if (!retrieved.isEmpty()) {
+                systemPrompt = systemPrompt == null ? retrieved : systemPrompt + "\n\n" + retrieved;
             }
         }
         return client.execute(provider, new AiRequest(systemPrompt, prompt, format, model, maxTokens));

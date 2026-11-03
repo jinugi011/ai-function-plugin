@@ -1,6 +1,7 @@
 package io.aiplugin.spring.autoconfigure;
 
 import io.aiplugin.core.AiClient;
+import io.aiplugin.core.ContextRetriever;
 import io.aiplugin.core.knowledge.KnowledgeBase;
 import io.aiplugin.core.knowledge.OpenAiFineTuneService;
 import io.aiplugin.core.local.LlamaCppProvider;
@@ -70,7 +71,7 @@ public class AiAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public AiClient aiClient(AiProperties properties, KnowledgeBase knowledgeBase, ResponseParser parser,
-                             ObjectProvider<AiProvider> customProviders) {
+                             ObjectProvider<AiProvider> customProviders, ObjectProvider<ContextRetriever> retriever) {
         List<AiProvider> providers = new ArrayList<>();
         AiProperties.OpenAi openai = properties.getOpenai();
         if (openai.isConfigured()) {
@@ -93,7 +94,7 @@ public class AiAutoConfiguration {
             throw new IllegalStateException("No AI provider configured. Set at least one of "
                     + "ai.openai.api-key, ai.claude.api-key, ai.abacus.api-key, ai.ollama.enabled, ai.llamacpp.enabled");
         }
-        return new AiClient(providers, properties.getDefaultProvider(), knowledgeBase, parser);
+        return new AiClient(providers, properties.getDefaultProvider(), knowledgeBase, parser, retriever.getIfAvailable());
     }
 
     @Bean

@@ -22,6 +22,11 @@ public final class AiClients {
     }
 
     public static AiClient create(Project project, boolean withKnowledge) {
+        return create(project, withKnowledge, false);
+    }
+
+    /** @param withRag true 면 RAG 탭에서 구성한 벡터 DB 검색 결과를 프롬프트에 넣습니다. */
+    public static AiClient create(Project project, boolean withKnowledge, boolean withRag) {
         AiSettings settings = AiSettings.getInstance();
         AiSettings.State s = settings.getState();
         List<AiProvider> providers = new ArrayList<>();
@@ -42,7 +47,8 @@ public final class AiClients {
                 Duration.ofMinutes(10), null));
         providers.add(LocalModelService.getInstance().llamaCpp());
         KnowledgeBase kb = withKnowledge ? loadKnowledge(project) : KnowledgeBase.empty();
-        return new AiClient(providers, s.defaultProvider, kb, null);
+        return new AiClient(providers, s.defaultProvider, kb, null,
+                withRag ? RagProjectService.getInstance(project).rag() : null);
     }
 
     public static Path knowledgeDir(Project project) {

@@ -18,7 +18,7 @@ import java.util.Objects;
 public class AiSettingsConfigurable implements Configurable {
 
     /** PasswordSafe 에 저장하는 키: 클라우드 API 키 + Hugging Face 토큰. */
-    private static final java.util.List<String> KEY_NAMES = java.util.List.of("claude", "openai", "abacus", "huggingface");
+    private static final java.util.List<String> KEY_NAMES = java.util.List.of("claude", "openai", "abacus", "huggingface", "embedding");
 
     private final Map<String, JBPasswordField> keyFields = new HashMap<>();
     private final Map<String, String> loadedKeys = new HashMap<>();
@@ -54,7 +54,8 @@ public class AiSettingsConfigurable implements Configurable {
                 .addLabeledComponent("Abacus.AI model:", abacusModel)
                 .addSeparator()
                 .addLabeledComponent("Hugging Face token (gated GGUF models, optional):", keyFields.get("huggingface"))
-                .addComponent(new JBLabel("Ollama / llama.cpp local models: AI Function tool window → Local Models tab."))
+                .addLabeledComponent("Embedding API key (openai-compatible, e.g. Voyage AI):", keyFields.get("embedding"))
+                .addComponent(new JBLabel("Ollama / llama.cpp local models and RAG: AI Function tool window tabs."))
                 .addSeparator()
                 .addLabeledComponent("Knowledge directory (project-relative):", knowledgeDir)
                 .addLabeledComponent("Fine-tune base model (OpenAI):", fineTuneBaseModel)

@@ -141,7 +141,8 @@ class AiServiceInvocationHandler implements InvocationHandler {
                     .model(model)
                     .system(system)
                     .knowledgeTag(knowledgeTag)
-                    .useKnowledge(prompt.useKnowledge());
+                    .useKnowledge(prompt.useKnowledge())
+                    .useRag(prompt.useRag());
             if (prompt.maxTokens() > 0) {
                 call.maxTokens(prompt.maxTokens());
             }

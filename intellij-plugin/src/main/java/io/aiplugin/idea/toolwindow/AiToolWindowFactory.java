@@ -22,6 +22,7 @@ public class AiToolWindowFactory implements ToolWindowFactory, DumbAware {
         promptContent.setPreferredFocusableComponent(prompt.getPreferredFocus());
         toolWindow.getContentManager().addContent(promptContent);
         toolWindow.getContentManager().addContent(factory.createContent(training, "Training Data", false));
+        toolWindow.getContentManager().addContent(factory.createContent(new RagPanel(project), "RAG", false));
         toolWindow.getContentManager().addContent(factory.createContent(new LocalModelsPanel(project), "Local Models", false));
     }
 }

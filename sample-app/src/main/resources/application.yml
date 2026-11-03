@@ -25,3 +25,20 @@ ai:
     model-dir: ${user.home}/.aiplugin/models
     server-binary: llama-server
     port: 8089
+
+  # RAG: 문서 임베딩 + 벡터 DB 검색 ─ 사용하려면 enabled: true
+  rag:
+    enabled: false
+    documents:
+      - classpath*:rag-docs/**     # 시작 시 색인 (바뀐 문서만 다시 임베딩)
+    chunk-size: 800
+    top-k: 4
+    min-score: 0.3
+    embedding:
+      provider: openai             # openai | ollama | openai-compatible
+      # model: text-embedding-3-small
+    store:
+      type: file                   # file | qdrant | pgvector
+      file-path: ./ai-rag/vector-store.json.gz
+      qdrant-url: http://localhost:6333
+      qdrant-collection: ai_documents

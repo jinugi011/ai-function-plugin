@@ -41,4 +41,7 @@ public @interface AiPrompt {
     boolean useKnowledge() default true;
 
     String knowledgeTag() default "";
+
+    /** RAG(벡터 DB 문서 검색) 결과를 컨텍스트로 사용할지 여부. ai.rag.enabled=true 일 때만 동작. */
+    boolean useRag() default true;
 }
